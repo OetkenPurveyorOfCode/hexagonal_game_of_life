@@ -111,6 +111,8 @@ extern "C" {
     fn ClearBackground(color: Color);
     // void DrawPoly(Vector2 center, int sides, float radius, float rotation, Color color);
     fn DrawPoly(center: Vector2, sides: std::ffi::c_int, radius: std::ffi::c_float, rotation: std::ffi::c_float, color: Color);
+    // void DrawFPS(int posX, int posY);
+    fn DrawFPS(pos_x: std::ffi::c_int, pos_y: std::ffi::c_int);
     // void CloseWindow(void);
     fn CloseWindow();
 
@@ -177,6 +179,7 @@ fn game_of_life(window_width: i32, window_height: i32, _resizable: bool, cell_si
                 }
             }
         }
+        unsafe{DrawFPS(0, 0)};
         unsafe{EndDrawing()};
     }
     unsafe {CloseWindow()};
