@@ -1,3 +1,5 @@
+use std::env;
+
 fn main() {
     cc::Build::new()
         .define("_CRT_SECURE_NO_WARNINGS", "1")
@@ -13,8 +15,10 @@ fn main() {
         .file("./raylib/src/rtextures.c")
         .file("./raylib/src/utils.c")
         .compile("raylib");
-    println!("cargo:rustc-link-lib=user32");
-    println!("cargo:rustc-link-lib=winmm");
-    println!("cargo:rustc-link-lib=shell32");
-    println!("cargo:rustc-link-lib=gdi32");
+    if env::var("CARGO_CFG_WINDOWS").is_ok() {
+        println!("cargo:rustc-link-lib=user32");
+        println!("cargo:rustc-link-lib=winmm");
+        println!("cargo:rustc-link-lib=shell32");
+        println!("cargo:rustc-link-lib=gdi32");
+    }
 }
