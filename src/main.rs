@@ -113,6 +113,8 @@ extern "C" {
     fn DrawPoly(center: Vector2, sides: std::ffi::c_int, radius: std::ffi::c_float, rotation: std::ffi::c_float, color: Color);
     // void DrawFPS(int posX, int posY);
     fn DrawFPS(pos_x: std::ffi::c_int, pos_y: std::ffi::c_int);
+    // void SetTargetFPS(int fps);
+    fn SetTargetFPS(fps: std::ffi::c_int);
     // void CloseWindow(void);
     fn CloseWindow();
 
@@ -145,6 +147,7 @@ fn game_of_life(window_width: i32, window_height: i32, _resizable: bool, cell_si
         window_width / cell_size +1,
         window_height / cell_size +1, // TODO move this hack somewhere else
     );
+    unsafe{SetTargetFPS(60)};
     let mut single_step = true;
     while unsafe{WindowShouldClose() == false} {
         if unsafe {IsKeyPressed(KEY_S)} {

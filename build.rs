@@ -12,7 +12,6 @@ fn main() {
         .file("./raylib/src/rtext.c")
         .file("./raylib/src/rtextures.c")
         .file("./raylib/src/utils.c")
-        //.file("./raylib/src/platforms/rcore_desktop.c")
         .compile("raylib");
     println!("cargo:rustc-link-lib=user32");
     println!("cargo:rustc-link-lib=winmm");
