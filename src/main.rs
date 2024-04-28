@@ -1,5 +1,4 @@
 use std::ops::Index;
-use raylib::prelude::*;
 
 struct Board<T> {
     board: Vec<T>,
@@ -94,54 +93,93 @@ fn step(board: &Board<GameOfLifeCell>, (row, col): &(i32, i32)) -> GameOfLifeCel
     }
 }
 
-fn game_of_life(window_width: i32, window_height: i32, resizable: bool, cell_size: i32, ) {
-    let (mut rl, thread) = raylib::init()
-        .size(window_width as i32, window_height as i32)
-        .title("Game Of Life")
-        .build();
+#[link(name = "raylib")]
+extern "C" {
+    // void InitWindow(int width, int height, const char *title);
+    fn InitWindow(width: std::ffi::c_int, height: std::ffi::c_int, title: *const std::ffi::c_char);
+    // void SetWindowState(unsigned int flags);
+    fn SetWindowState(flags: std::ffi::c_uint);
+    // bool WindowShouldClose(void);
+    fn WindowShouldClose() -> bool;
+    // bool IsKeyPressed(int key);
+    fn IsKeyPressed(key: i32) -> bool;
+    // void BeginDrawing(void);
+    fn BeginDrawing();
+    // void EndDrawing(void);
+    fn EndDrawing();
+    // void ClearBackground(Color color); 
+    fn ClearBackground(color: Color);
+    // void DrawPoly(Vector2 center, int sides, float radius, float rotation, Color color);
+    fn DrawPoly(center: Vector2, sides: std::ffi::c_int, radius: std::ffi::c_float, rotation: std::ffi::c_float, color: Color);
+    // void CloseWindow(void);
+    fn CloseWindow();
 
-    WindowState::set_window_resizable(rl.get_window_state(), resizable);
+}
+const FLAG_WINDOW_RESIZABLE : std::ffi::c_uint = 0x00000004;
+const KEY_S : std::ffi::c_int = 83;
+const KEY_ENTER: std::ffi::c_int = 257;
+const BLUE: Color = Color{r: 0, g:121, b:241, a: 255 };
+const WHITE: Color = Color{r: 255, g: 255, b: 255, a: 255 };
+const DEG2RAD: f32 = std::f32::consts::PI / 180.0;
+#[repr(C)]
+#[derive(PartialEq, Eq)]
+struct Color {
+    r: std::ffi::c_uchar,
+    g: std::ffi::c_uchar,
+    b: std::ffi::c_uchar,
+    a: std::ffi::c_uchar,
+}
+
+#[repr(C)]
+struct Vector2 {
+    x: std::ffi::c_float,
+    y: std::ffi::c_float,
+}
+
+fn game_of_life(window_width: i32, window_height: i32, _resizable: bool, cell_size: i32, ) {
+    unsafe {InitWindow(window_width, window_height, "Hello".as_ptr() as *const std::ffi::c_char)};
+    unsafe {SetWindowState(FLAG_WINDOW_RESIZABLE); };
     let mut automaton = Board::<GameOfLifeCell>::new(
         window_width / cell_size +1,
         window_height / cell_size +1, // TODO move this hack somewhere else
     );
     let mut single_step = true;
-    while !rl.window_should_close() {
-        if rl.is_key_pressed(KeyboardKey::KEY_S) {
+    while unsafe{WindowShouldClose() == false} {
+        if unsafe {IsKeyPressed(KEY_S)} {
             single_step = !single_step;
         }
-        if single_step && rl.is_key_pressed(KeyboardKey::KEY_ENTER) {
+        if single_step && unsafe {IsKeyPressed(KEY_ENTER) } {
             automaton.step(step);
         }
         if !single_step {
             automaton.step(step);
         }
-        let mut d = rl.begin_drawing(&thread);
-        d.clear_background(Color::BLUE);
+        unsafe {BeginDrawing()};
+        unsafe {ClearBackground(BLUE)};
         for row in 0..automaton.height {
             for col in 0..automaton.width {
                 let colour = match automaton[(row, col)] {
-                    GameOfLifeCell::Alive => Color::WHITE,
-                    GameOfLifeCell::Dead => Color::BLUE,
+                    GameOfLifeCell::Alive => WHITE,
+                    GameOfLifeCell::Dead => BLUE,
                 };
-                if colour != Color::BLUE {
+                if colour != BLUE {
                     let distance_center_to_middle_of_side: f32 = ((cell_size as f32).powi(2) - (cell_size as f32 / 2.0).powi(2)).sqrt();
                     let mut center_x = row as f32 * 2.0* distance_center_to_middle_of_side * (-60.0*DEG2RAD as f32).cos() + col as f32 * 2.0* distance_center_to_middle_of_side;
                     if center_x > window_width as f32 + cell_size as f32 {
                         center_x = row as f32 * 2.0* distance_center_to_middle_of_side * (-60.0*DEG2RAD as f32).cos() + (col - &automaton.width) as f32 * 2.0* distance_center_to_middle_of_side;
                     }
 
-                    let center = Vector2::new(
-                        center_x,
-                        row as f32 * 2.0* distance_center_to_middle_of_side * (60.0*DEG2RAD as f32).sin()
-                    );
-                    //dbg!(center);
-                    d.draw_poly(center , 6, cell_size as f32, 0.0, colour);
+                    let center = Vector2{
+                        x: center_x,
+                        y: row as f32 * 2.0* distance_center_to_middle_of_side * (60.0*DEG2RAD as f32).sin()
+                    };
+                    unsafe {DrawPoly(center , 6, cell_size as f32, 30.0, WHITE) };
                 }
-                d.draw_fps(0, 0);
             }
         }
+        unsafe{EndDrawing()};
     }
+    unsafe {CloseWindow()};
 }
 
 const HELP: &str = "\
