@@ -71,7 +71,7 @@ impl Default for GameOfLifeCell {
     }
 }
 
-fn step(board: &Board<GameOfLifeCell>, (row, col): &(i32, i32)) -> GameOfLifeCell {
+fn step9(board: &Board<GameOfLifeCell>, (row, col): &(i32, i32)) -> GameOfLifeCell {
     const MOORE_NEIGHBOURHOOD: [(i32, i32); 8] = [
         (-1, -1), (-1, 0), (-1, 1),
         (0, -1), (0, 1), // Not including self
@@ -89,6 +89,28 @@ fn step(board: &Board<GameOfLifeCell>, (row, col): &(i32, i32)) -> GameOfLifeCel
         GameOfLifeCell::Dead if alive == 3 => GameOfLifeCell::Alive,
         GameOfLifeCell::Dead => GameOfLifeCell::Dead,
         GameOfLifeCell::Alive if alive == 2 || alive == 3 => GameOfLifeCell::Alive,
+        GameOfLifeCell::Alive => GameOfLifeCell::Dead,
+    }
+}
+
+fn step6(board: &Board<GameOfLifeCell>, (row, col): &(i32, i32)) -> GameOfLifeCell {
+    const MOORE_NEIGHBOURHOOD: [(i32, i32); 6] = [
+        (-1, 0), (-1, 1), (0, 1),
+        (1, 0), (1, -1), 
+        (0, -1)];
+    let mut alive = 0;
+    let center_cell = &board[(*row, *col)];
+    for (delta_row, delta_col) in MOORE_NEIGHBOURHOOD {
+        let cell: &GameOfLifeCell = &board[(row + delta_row, col +delta_col)];
+        match cell {
+            GameOfLifeCell::Alive => alive +=1,
+            _ => (),
+        }
+    }
+    match center_cell {
+        GameOfLifeCell::Dead if alive == 1 => GameOfLifeCell::Alive,
+        GameOfLifeCell::Dead => GameOfLifeCell::Dead,
+        GameOfLifeCell::Alive if alive == 1 || alive == 2 => GameOfLifeCell::Alive,
         GameOfLifeCell::Alive => GameOfLifeCell::Dead,
     }
 }
@@ -140,7 +162,7 @@ struct Vector2 {
     y: std::ffi::c_float,
 }
 
-fn game_of_life(window_width: i32, window_height: i32, _resizable: bool, cell_size: i32, ) {
+fn game_of_life(window_width: i32, window_height: i32, _resizable: bool, cell_size: i32, step_fn: fn(&Board<GameOfLifeCell>, &(i32, i32)) -> GameOfLifeCell) {
     unsafe {InitWindow(window_width, window_height, "Hello".as_ptr() as *const std::ffi::c_char)};
     unsafe {SetWindowState(FLAG_WINDOW_RESIZABLE); };
     let mut automaton = Board::<GameOfLifeCell>::new(
@@ -154,10 +176,10 @@ fn game_of_life(window_width: i32, window_height: i32, _resizable: bool, cell_si
             single_step = !single_step;
         }
         if single_step && unsafe {IsKeyPressed(KEY_ENTER) } {
-            automaton.step(step);
+            automaton.step(step_fn);
         }
         if !single_step {
-            automaton.step(step);
+            automaton.step(step_fn);
         }
         unsafe {BeginDrawing()};
         unsafe {ClearBackground(BLUE)};
@@ -189,7 +211,7 @@ fn game_of_life(window_width: i32, window_height: i32, _resizable: bool, cell_si
 }
 
 const HELP: &str = "\
-Hexagonal Automata v0.0.1
+HexLife v0.0.1
 
 USAGE:
   app [FLAGS] [OPTIONS] <AUTOMATON>
@@ -204,7 +226,9 @@ OPTIONS:
   --cell_size <size>    Set cell size (center of hexagon to corner)
 
 AUTOMATON:
-  <AUTOMATON>           Cellular automaton to run (gol : Game of Life), 
+  <AUTOMATON>           Cellular automaton to run
+                        gol : Game of Life
+                        gol6: Game Of Life with a 6-neighbourhood)
 ";
 
 
@@ -225,11 +249,24 @@ fn main() {
     let height : i32 = pargs.opt_value_from_fn("--height", parse_number).unwrap().unwrap_or(600);
     let cell_size : i32 = pargs.opt_value_from_fn("--cell_size", parse_number).unwrap().unwrap_or(6);
     let resizable : bool = pargs.contains(["-r", "--resizable"]);
+    let automaton : String = match pargs.free_from_str() {
+        Ok(str) => str,
+        Err(_) => String::from("gol"),
+    };
     let remaining = pargs.finish();
     if !remaining.is_empty() {
         eprintln!("WARNING: unknown arguments left: {:?}.", remaining);
+        return;
     }
-    game_of_life(width, height, resizable, cell_size);
+    if automaton == "gol" {
+        game_of_life(width, height, resizable, cell_size, step9);
+    }
+    if automaton == "gol6" {
+        game_of_life(width, height, resizable, cell_size, step6);
+    }
+    else {
+        eprintln!("unknown automaton {automaton}");
+        return;
+    }
     return;
-    
 }
